@@ -7,6 +7,7 @@ from app.services.comment import get_user_comments
 from app.dependencies import get_current_active_user
 from app.schemas.user import UserInDB
 from typing import List
+from bson import ObjectId
 
 router = APIRouter()
 
@@ -30,21 +31,21 @@ async def update_user_me(
 @router.get("/blogs", response_model=List[BlogResponse])
 async def read_user_blogs(current_user: UserInDB = Depends(get_current_active_user)):
     """Get blogs by current user"""
-    blogs = await get_user_blogs(current_user.id)
+    blogs = await get_user_blogs(str(current_user.id))
     return blogs
 
 
 @router.get("/liked", response_model=List[BlogResponse])
 async def read_liked_blogs(current_user: UserInDB = Depends(get_current_active_user)):
     """Get blogs liked by current user"""
-    blogs = await get_liked_blogs(current_user.id)
+    blogs = await get_liked_blogs(str(current_user.id))
     return blogs
 
 
 @router.get("/comments", response_model=List[dict])
 async def read_user_comments(current_user: UserInDB = Depends(get_current_active_user)):
     """Get comments by current user"""
-    comments = await get_user_comments(current_user.id)
+    comments = await get_user_comments(str(current_user.id))
 
     # Add blog title to each comment
     from app.main import app

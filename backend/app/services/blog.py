@@ -374,16 +374,16 @@ async def get_user_blogs(user_id: str) -> List[BlogResponse]:
     db = app.mongodb
 
     # Get blogs by user
-    blogs_cursor = db.blogs.find({"author_id": ObjectId(user_id)}).sort("created_at", -1)
+    blogs_cursor = db.blogs.find({"author_id": str(user_id)}).sort("created_at", -1)
     blogs = await blogs_cursor.to_list(length=None)
 
     # Get categories
     blog_responses = []
     for blog in blogs:
-        category = await db.categories.find_one({"_id": blog["category_id"]})
+        category = await db.categories.find_one({"_id": ObjectId(blog["category_id"])})
 
         # Get author
-        author = await db.users.find_one({"_id": blog["author_id"]})
+        author = await db.users.find_one({"_id": ObjectId(blog["author_id"])})
 
         blog_responses.append(BlogResponse(
             id=str(blog["_id"]),
@@ -391,6 +391,7 @@ async def get_user_blogs(user_id: str) -> List[BlogResponse]:
             slug=blog["slug"],
             content=blog["content"],
             excerpt=blog["excerpt"],
+            category_id=str(category["_id"]),
             author=User(
                 id=str(author["_id"]),
                 name=author["name"],
@@ -488,8 +489,8 @@ async def get_liked_blogs(user_id: str) -> List[BlogResponse]:
     for like in likes:
         blog = await db.blogs.find_one({"_id": like["blog_id"]})
         if blog:
-            author = await db.users.find_one({"_id": blog["author_id"]})
-            category = await db.categories.find_one({"_id": blog["category_id"]})
+            author = await db.users.find_one({"_id": ObjectId(blog["author_id"])})
+            category = await db.categories.find_one({"_id": ObjectId(blog["category_id"])})
 
             blog_responses.append(BlogResponse(
                 id=str(blog["_id"]),
@@ -504,6 +505,7 @@ async def get_liked_blogs(user_id: str) -> List[BlogResponse]:
                     bio=author.get("bio", ""),
                     avatar=author.get("avatar", None)
                 ),
+                category_id=str(category["_id"]),
                 category=Category(
                     id=str(category["_id"]),
                     name=category["name"],

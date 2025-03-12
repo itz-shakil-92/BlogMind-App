@@ -197,15 +197,15 @@ async def get_user_comments(user_id: str) -> List[CommentResponse]:
     db = app.mongodb
 
     # Get comments by user
-    comments_cursor = db.comments.find({"user_id": ObjectId(user_id)}).sort("created_at", -1)
+    comments_cursor = db.comments.find({"user_id": (user_id)}).sort("created_at", -1)
     comments = await comments_cursor.to_list(length=None)
 
     # Get blogs
     comment_responses = []
     for comment in comments:
-        blog = await db.blogs.find_one({"_id": comment["blog_id"]})
+        blog = await db.blogs.find_one({"_id": ObjectId(comment["blog_id"])})
         if blog:
-            user = await db.users.find_one({"_id": comment["user_id"]})
+            user = await db.users.find_one({"_id": ObjectId(comment["user_id"])})
 
             comment_responses.append(CommentResponse(
                 id=str(comment["_id"]),

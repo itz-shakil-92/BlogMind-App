@@ -8,26 +8,26 @@ load_dotenv()
 
 class Settings(BaseSettings):
     # MongoDB settings
-    MONGODB_URL: str = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
-    MONGODB_DB_NAME: str = os.getenv("MONGODB_DB_NAME", "blogmind")
+    MONGODB_URL: str = os.getenv("MONGODB_URL")
+    MONGODB_DB_NAME: str = os.getenv("MONGODB_DB_NAME")
 
     # Security settings
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
+    SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
     # Application settings
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000"]
-    API_URL: str = os.getenv("API_URL", "http://localhost:8000/api")
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "uploads")
+    API_URL: str = os.getenv("API_URL")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL")
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR")
 
     # Email settings
-    MAIL_USERNAME: str = os.getenv("MAIL_USERNAME", "")
-    MAIL_PASSWORD: str = os.getenv("MAIL_PASSWORD", "")
-    MAIL_FROM: str = os.getenv("MAIL_FROM", "noreply@blogmind.com")
-    MAIL_PORT: int = int(os.getenv("MAIL_PORT", "587"))
-    MAIL_SERVER: str = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_USERNAME: str = os.getenv("MAIL_USERNAME")
+    MAIL_PASSWORD: str = os.getenv("MAIL_PASSWORD")
+    MAIL_FROM: str = os.getenv("MAIL_FROM")
+    MAIL_PORT: int = int(os.getenv("MAIL_PORT"))
+    MAIL_SERVER: str = os.getenv("MAIL_SERVER")
     MAIL_FROM_NAME: str = os.getenv("MAIL_FROM_NAME", "BlogMind")
     MAIL_TLS: bool = os.getenv("MAIL_TLS", "True").lower() == "true"
     MAIL_SSL: bool = os.getenv("MAIL_SSL", "False").lower() == "true"
