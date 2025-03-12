@@ -2,11 +2,12 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
 import asyncio
 from app.utils.slugify import slugify
-
+import os
 
 async def init_db():
     # Connect to MongoDB
-    client = AsyncIOMotorClient("mongodb+srv://mrshakilkhan5603:k5wrpKZVxqHVXWOu@cluster0.1cyux.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+
+    client = AsyncIOMotorClient(os.getenv("MONGODB_URL", "mongodb://localhost:27017"))
     db = client["blogmind"]
 
     # Create categories collection if it doesn't exist
