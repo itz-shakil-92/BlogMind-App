@@ -1,0 +1,42 @@
+# Ignore Python cache files
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Virtual environment
+venv/
+myenv/
+
+# Ignore environment variables
+**/.env
+
+# Ignore log files
+**/*.log
+app.log
+
+# Ignore database files
+**/*.sqlite3
+**/*.db
+
+# Ignore uploads or temporary files
+**/uploads/
+**/temp/
+
+# Ignore IDE and editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore backend dependencies
+backend/__pycache__/
+backend/venv/
+backend/.env
+backend/uploads/
+
+# Ignore frontend dependencies (if applicable)
+frontend/node_modules/
+frontend/.env
+frontend/dist/
+frontend/build/

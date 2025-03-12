@@ -37,7 +37,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # Mount static files
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/static/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
@@ -55,37 +54,47 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"]
 # Startup event
 @app.on_event("startup")
 async def startup_db_client():
-    app.mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL)
-    app.mongodb = app.mongodb_client[settings.MONGODB_DB_NAME]
+    try:
+        app.mongodb_client = AsyncIOMotorClient(settings.MONGODB_URL)
+        app.mongodb = app.mongodb_client[settings.MONGODB_DB_NAME]
 
-    # Create indexes
-    await app.mongodb.users.create_index("email", unique=True)
-    await app.mongodb.blogs.create_index("slug", unique=True)
-    await app.mongodb.blogs.create_index("author_id")
-    await app.mongodb.blogs.create_index("category_id")
-    await app.mongodb.blogs.create_index("published_at")
-    await app.mongodb.blogs.create_index([
-        ("title", "text"),
-        ("content", "text"),
-        ("excerpt", "text")
-    ])
-    await app.mongodb.comments.create_index("blog_id")
-    await app.mongodb.comments.create_index("user_id")
-    await app.mongodb.likes.create_index([("blog_id", 1), ("user_id", 1)], unique=True)
-    await app.mongodb.view_events.create_index("blog_id")
-    await app.mongodb.view_events.create_index("created_at")
+        # Create indexes
+        await app.mongodb.users.create_index("email", unique=True)
+        await app.mongodb.blogs.create_index("slug", unique=True)
+        await app.mongodb.blogs.create_index("author_id")
+        await app.mongodb.blogs.create_index("category_id")
+        await app.mongodb.blogs.create_index("published_at")
+        await app.mongodb.blogs.create_index([
+            ("title", "text"),
+            ("content", "text"),
+            ("excerpt", "text")
+        ])
+        await app.mongodb.comments.create_index("blog_id")
+        await app.mongodb.comments.create_index("user_id")
+        await app.mongodb.likes.create_index([("blog_id", 1), ("user_id", 1)], unique=True)
+        await app.mongodb.view_events.create_index("blog_id")
+        await app.mongodb.view_events.create_index("created_at")
 
-    logger.info("Database connection established and indexes created")
+        logger.info("Database connection established and indexes created")
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
 
 
 # Shutdown event
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    app.mongodb_client.close()
-    logger.info("Database connection closed")
+    if hasattr(app, "mongodb_client"):
+        app.mongodb_client.close()
+        logger.info("Database connection closed")
 
 
 # Root endpoint
 @app.get("/")
 async def root():
     return {"message": "Welcome to BlogMind API"}
+
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 8000))  # Read PORT from environment (Render sets this)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=port)
