@@ -13,13 +13,12 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { blogApi, uploadApi } from "@/lib/api-client"
+import { api } from "@/lib/api-client"
 import { ArrowLeft, Upload } from "lucide-react"
 
 interface Category {
   id: string
   name: string
-  slug: string
 }
 
 interface Tag {
@@ -63,7 +62,9 @@ export default function BlogForm({ blog }: BlogFormProps) {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const categoriesData = await blogApi.getCategories()
+        // Use the correct endpoint for categories
+        const categoriesData = await api.getCategories()
+        console.log("Categories fetched:", categoriesData)
         setCategories(categoriesData)
 
         // Set default category if none is selected
@@ -76,11 +77,11 @@ export default function BlogForm({ blog }: BlogFormProps) {
 
         // Fallback categories for development
         const fallbackCategories = [
-          { id: "1", name: "Technology", slug: "technology" },
-          { id: "2", name: "Lifestyle", slug: "lifestyle" },
-          { id: "3", name: "Health", slug: "health" },
-          { id: "4", name: "Business", slug: "business" },
-          { id: "5", name: "Travel", slug: "travel" },
+          { id: "1", name: "Technology" },
+          { id: "2", name: "Lifestyle" },
+          { id: "3", name: "Health" },
+          { id: "4", name: "Business" },
+          { id: "5", name: "Travel" },
         ]
         setCategories(fallbackCategories)
 
@@ -91,7 +92,7 @@ export default function BlogForm({ blog }: BlogFormProps) {
     }
 
     fetchCategories()
-  }, [formData.category_id])
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -109,16 +110,28 @@ export default function BlogForm({ blog }: BlogFormProps) {
     try {
       setIsUploading(true)
 
-      // Upload the blog image
-      const result = await uploadApi.uploadBlogImage(file)
+      // For development, just set the file as a data URL
+      // In production, use the actual API
+      const reader = new FileReader()
+      reader.onload = () => {
+        setFormData((prev) => ({ ...prev, cover_image: reader.result as string }))
+        setIsUploading(false)
+        toast({
+          title: "Image uploaded",
+          description: "Your cover image has been uploaded successfully.",
+        })
+      }
+      reader.readAsDataURL(file)
 
-      // Update the form data with the new image URL
-      setFormData((prev) => ({ ...prev, cover_image: result.image_url }))
-
+      // Uncomment this for actual API usage
+      /*
+      const result = await api.uploadBlogImage(file)
+      setFormData((prev) => ({ ...prev, cover_image: result.url }))
       toast({
         title: "Image uploaded",
         description: "Your cover image has been uploaded successfully.",
       })
+      */
     } catch (error) {
       console.error("Failed to upload image:", error)
       toast({
@@ -126,7 +139,6 @@ export default function BlogForm({ blog }: BlogFormProps) {
         description: "Failed to upload image. Please try again.",
         variant: "destructive",
       })
-    } finally {
       setIsUploading(false)
     }
   }
@@ -152,15 +164,17 @@ export default function BlogForm({ blog }: BlogFormProps) {
         cover_image: formData.cover_image || undefined,
       }
 
+      console.log("Submitting blog with payload:", payload)
+
       let response
       if (blog) {
-        response = await blogApi.updateBlog(blog.id, payload)
+        response = await api.updateBlog(blog.id, payload)
         toast({
           title: "Blog post updated",
           description: "Your blog post has been updated successfully.",
         })
       } else {
-        response = await blogApi.createBlog(payload)
+        response = await api.createBlog(payload)
         toast({
           title: "Blog post created",
           description: "Your blog post has been created successfully.",

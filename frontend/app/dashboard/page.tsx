@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
-import { cookies } from "next/headers"
 import DashboardContent from "@/components/dashboard/dashboard-content"
+import { cookies } from "next/headers"
 
 export const metadata: Metadata = {
   title: "Dashboard | BlogMind",

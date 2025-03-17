@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Define protected routes
-  const protectedRoutes = ["/dashboard", "/profile", "/blog/new", "/analytics"]
+  const protectedRoutes = ["/profile"]
 
   // Check if the path starts with any protected route
   const isProtectedRoute = protectedRoutes.some((route) => path === route || path.startsWith(`${route}/`))
@@ -21,9 +21,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // If it's a login/signup page and user is already logged in, redirect to dashboard
+  // If it's a login/signup page and user is already logged in, redirect to profile
   if ((path === "/login" || path === "/signup") && token) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
+    return NextResponse.redirect(new URL("/profile", request.url))
   }
 
   return NextResponse.next()
@@ -31,15 +31,6 @@ export function middleware(request: NextRequest) {
 
 // See "Matching Paths" below to learn more
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/profile/:path*",
-    "/blog/new",
-    "/blog/:path*/edit",
-    "/blog/:path*/analytics",
-    "/analytics/:path*",
-    "/login",
-    "/signup",
-  ],
+  matcher: ["/profile/:path*", "/login", "/signup"],
 }
 

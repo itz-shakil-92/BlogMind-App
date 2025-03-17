@@ -3,27 +3,23 @@
 import { useEffect, useState, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { useParams, notFound, useRouter } from "next/navigation"
+import { useParams, notFound } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
 import RecommendedPosts from "@/components/home/recommended-posts"
 import CommentsSection from "@/components/blog/comments-section"
-import { Calendar, Clock, ArrowLeft, Heart, Share2, Edit, BarChart2 } from "lucide-react"
+import PostActions from "@/components/blog/post-actions"
+import { Calendar, Clock, ArrowLeft } from "lucide-react"
 import { formatDate, getInitials } from "@/lib/utils"
-import { blogApi, analyticsApi } from "@/lib/api-client"
-import { useAuth } from "@/contexts/auth-context"
+import { api } from "@/lib/api-client"
 
 export default function BlogPost() {
   const params = useParams()
-  const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
   const slug = params.slug as string
   const [post, setPost] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [liked, setLiked] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [readProgress, setReadProgress] = useState(0)
   const progressRecorded = useRef<Set<number>>(new Set())
@@ -32,13 +28,12 @@ export default function BlogPost() {
     const fetchBlogPost = async () => {
       try {
         setLoading(true)
-        const data = await blogApi.getBlogBySlug(slug)
+        const data = await api.getBlogBySlug(slug)
         setPost(data)
-        setLiked(data.is_liked)
 
         // Record view
         try {
-          await analyticsApi.recordBlogView(slug, document.referrer)
+          await api.recordBlogView(data.id)
         } catch (viewError) {
           console.error("Failed to record view:", viewError)
         }
@@ -83,7 +78,7 @@ export default function BlogPost() {
         if (progress >= point && !progressRecorded.current.has(point)) {
           progressRecorded.current.add(point)
           try {
-            analyticsApi.recordReadProgress(slug, point)
+            api.recordReadProgress(post.id, point)
           } catch (error) {
             console.error(`Failed to record ${point}% progress:`, error)
           }
@@ -93,47 +88,7 @@ export default function BlogPost() {
 
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
-  }, [post, slug])
-
-  const handleLike = async () => {
-    if (!isAuthenticated) {
-      router.push(`/login?redirect=/blog/${slug}`)
-      return
-    }
-
-    try {
-      await blogApi.likeBlog(slug)
-      setLiked(!liked)
-
-      // Update the post's like count
-      setPost((prev: any) => ({
-        ...prev,
-        likes_count: liked ? prev.likes_count - 1 : prev.likes_count + 1,
-      }))
-    } catch (error) {
-      console.error("Failed to like/unlike post:", error)
-    }
-  }
-
-  const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/blog/${slug}`
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: post.title,
-          text: post.excerpt,
-          url: shareUrl,
-        })
-      } catch (error) {
-        console.error("Error sharing:", error)
-      }
-    } else {
-      // Fallback to copying to clipboard
-      navigator.clipboard.writeText(shareUrl)
-      alert("Link copied to clipboard!")
-    }
-  }
+  }, [post])
 
   if (loading) {
     return (
@@ -163,7 +118,7 @@ export default function BlogPost() {
     notFound()
   }
 
-  const isAuthor = user && post.author.id === user.id
+  const shareUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://blogmind.com"}/blog/${post.slug}`
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -190,31 +145,14 @@ export default function BlogPost() {
               <span>{post.read_time} min read</span>
             </div>
           </div>
-          <div className="ml-auto flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleLike}>
-              <Heart className={`h-4 w-4 mr-2 ${liked ? "fill-primary text-primary" : ""}`} />
-              {post.likes_count}
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
-            </Button>
-            {isAuthor && (
-              <>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/blog/${post.slug}/edit`}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Link>
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/blog/${post.slug}/analytics`}>
-                    <BarChart2 className="h-4 w-4 mr-2" />
-                    Analytics
-                  </Link>
-                </Button>
-              </>
-            )}
+          <div className="ml-auto">
+            <PostActions
+              postId={post.id}
+              slug={post.slug}
+              initialLikes={post.likes_count || 0}
+              initialIsLiked={post.is_liked || false}
+              shareUrl={shareUrl}
+            />
           </div>
         </div>
 

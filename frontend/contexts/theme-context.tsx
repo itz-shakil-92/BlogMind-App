@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
 interface ThemeContextType {
   isDarkMode: boolean
@@ -14,31 +14,24 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check if user has a theme preference in localStorage
-    const storedTheme = localStorage.getItem("theme")
+    const savedTheme = localStorage.getItem("theme")
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
 
-    if (storedTheme === "dark" || (!storedTheme && prefersDark)) {
+    if (savedTheme === "dark" || (!savedTheme && prefersDark)) {
       setIsDarkMode(true)
       document.documentElement.classList.add("dark")
-    } else {
-      setIsDarkMode(false)
-      document.documentElement.classList.remove("dark")
     }
   }, [])
 
   const toggleDarkMode = () => {
-    setIsDarkMode((prev) => {
-      const newMode = !prev
-      localStorage.setItem("theme", newMode ? "dark" : "light")
-
-      if (newMode) {
-        document.documentElement.classList.add("dark")
-      } else {
-        document.documentElement.classList.remove("dark")
-      }
-
-      return newMode
-    })
+    setIsDarkMode(!isDarkMode)
+    if (isDarkMode) {
+      document.documentElement.classList.remove("dark")
+      localStorage.setItem("theme", "light")
+    } else {
+      document.documentElement.classList.add("dark")
+      localStorage.setItem("theme", "dark")
+    }
   }
 
   return <ThemeContext.Provider value={{ isDarkMode, toggleDarkMode }}>{children}</ThemeContext.Provider>
