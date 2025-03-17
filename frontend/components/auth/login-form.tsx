@@ -4,14 +4,13 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function LoginForm() {
   const router = useRouter()
@@ -35,45 +34,34 @@ export default function LoginForm() {
     setIsLoading(true)
     setError("")
 
-    // Validate required fields
-    if (!formData.email || !formData.password) {
-      setError("Email and password are required")
-      setIsLoading(false)
-      return
-    }
-
     try {
-      console.log("Logging in with:", formData.email, formData.password)
       const result = await login(formData.email, formData.password)
 
-      if (!result.success) {
-        setError(result.error || "Login failed")
-        setIsLoading(false)
-      } else {
+      if (result.success) {
         toast({
           title: "Login successful",
-          description: "You have been logged in successfully.",
+          description: "Welcome back to BlogMind!",
         })
 
-        // Redirect to dashboard or the page they were trying to access
-        const redirectTo = searchParams?.get("redirect") || "/profile"
+        // Redirect to the requested page or dashboard
+        const redirectTo = searchParams?.get("redirect") || "/dashboard"
         router.push(redirectTo)
+      } else {
+        setError(result.error || "Login failed. Please try again.")
       }
     } catch (error: any) {
       console.error("Login error:", error)
-      setError("An unexpected error occurred. Please try again.")
+      setError(error.message || "Login failed. Please try again.")
+    } finally {
       setIsLoading(false)
     }
   }
 
-  // Get message from URL query params
-  const message = searchParams?.get("message")
-
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card>
       <CardHeader>
-        <CardTitle>Welcome back</CardTitle>
-        <CardDescription>Enter your email below to login to your account</CardDescription>
+        <CardTitle>Login</CardTitle>
+        <CardDescription>Enter your credentials to access your account</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
@@ -82,17 +70,17 @@ export default function LoginForm() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          {message && (
-            <Alert>
-              <AlertDescription>{message}</AlertDescription>
-            </Alert>
-          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <a href="/forgot-password" className="text-sm text-primary hover:underline">
+                Forgot password?
+              </a>
+            </div>
             <Input
               id="password"
               name="password"
@@ -103,16 +91,10 @@ export default function LoginForm() {
             />
           </div>
         </CardContent>
-        <CardFooter className="flex-col gap-2">
+        <CardFooter>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Signing in..." : "Sign in"}
+            {isLoading ? "Logging in..." : "Login"}
           </Button>
-          <p className="text-sm text-muted-foreground text-center">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline">
-              Sign up
-            </Link>
-          </p>
         </CardFooter>
       </form>
     </Card>

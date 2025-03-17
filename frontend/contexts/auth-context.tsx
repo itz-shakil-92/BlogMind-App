@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = async (userData: Partial<User>) => {
     try {
       const updatedUser = await authApi.updateUser(userData)
-      setUser({ ...user, ...updatedUser })
+      setUser({ ...user, ...updatedUser } as User)
       return { success: true }
     } catch (error: any) {
       console.error("Profile update failed:", error)

@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import apiClient from "@/lib/api-client"
+import { blogApi } from "@/lib/api-client"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface Category {
   id: string
   name: string
+  slug: string
 }
 
 export default function CategoryFilter() {
@@ -21,19 +22,20 @@ export default function CategoryFilter() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await apiClient.get("/categories")
+        setLoading(true)
+        const categoriesData = await blogApi.getCategories()
         // Add 'All' category to the beginning
-        setCategories([{ id: "all", name: "All" }, ...response.data])
+        setCategories([{ id: "all", name: "All", slug: "all" }, ...categoriesData])
       } catch (error) {
         console.error("Failed to fetch categories:", error)
         // Fallback categories if API fails
         setCategories([
-          { id: "all", name: "All" },
-          { id: "technology", name: "Technology" },
-          { id: "lifestyle", name: "Lifestyle" },
-          { id: "health", name: "Health" },
-          { id: "business", name: "Business" },
-          { id: "travel", name: "Travel" },
+          { id: "all", name: "All", slug: "all" },
+          { id: "technology", name: "Technology", slug: "technology" },
+          { id: "lifestyle", name: "Lifestyle", slug: "lifestyle" },
+          { id: "health", name: "Health", slug: "health" },
+          { id: "business", name: "Business", slug: "business" },
+          { id: "travel", name: "Travel", slug: "travel" },
         ])
       } finally {
         setLoading(false)
@@ -43,18 +45,18 @@ export default function CategoryFilter() {
     fetchCategories()
   }, [])
 
-  const handleCategoryClick = (categoryId: string) => {
-    setActiveCategory(categoryId)
+  const handleCategoryClick = (categorySlug: string) => {
+    setActiveCategory(categorySlug)
 
     // Create a new URLSearchParams object based on the current params
     const params = new URLSearchParams(searchParams?.toString())
 
-    if (categoryId === "all") {
+    if (categorySlug === "all") {
       // Remove category parameter if 'All' is selected
       params.delete("category")
     } else {
       // Update or add the category parameter
-      params.set("category", categoryId)
+      params.set("category", categorySlug)
     }
 
     router.push(`/?${params.toString()}`)
@@ -78,8 +80,8 @@ export default function CategoryFilter() {
         {categories.map((category) => (
           <Button
             key={category.id}
-            variant={activeCategory === category.id ? "default" : "outline"}
-            onClick={() => handleCategoryClick(category.id)}
+            variant={activeCategory === category.slug ? "default" : "outline"}
+            onClick={() => handleCategoryClick(category.slug)}
             className="whitespace-nowrap"
           >
             {category.name}

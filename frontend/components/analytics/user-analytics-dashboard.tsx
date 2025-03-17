@@ -5,45 +5,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 import { analyticsApi } from "@/lib/api-client"
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts"
+import { formatDate } from "@/lib/utils"
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
-interface BlogAnalyticsProps {
-  slug: string
-}
-
-export default function BlogAnalytics({ slug }: BlogAnalyticsProps) {
+export default function UserAnalyticsDashboard() {
   const [analytics, setAnalytics] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [timeframe, setTimeframe] = useState(30) // Default to 30 days
-  const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
         setLoading(true)
-        const data = await analyticsApi.getBlogAnalytics(slug, timeframe)
+        const data = await analyticsApi.getUserAnalytics(timeframe)
         setAnalytics(data)
       } catch (error) {
-        console.error("Failed to fetch blog analytics:", error)
+        console.error("Failed to fetch analytics:", error)
       } finally {
         setLoading(false)
       }
     }
 
     fetchAnalytics()
-  }, [slug, timeframe])
+  }, [timeframe])
 
   const handleTimeframeChange = (days: number) => {
     setTimeframe(days)
@@ -52,12 +38,16 @@ export default function BlogAnalytics({ slug }: BlogAnalyticsProps) {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex justify-end">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+            <p className="text-muted-foreground">View insights about your blog performance</p>
+          </div>
           <Skeleton className="h-10 w-48" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
@@ -77,14 +67,23 @@ export default function BlogAnalytics({ slug }: BlogAnalyticsProps) {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold mb-4">No analytics data available</h2>
-        <p className="text-muted-foreground mb-6">This blog post doesn't have any analytics data yet.</p>
+        <p className="text-muted-foreground mb-6">
+          Start creating and publishing blog posts to see your analytics data.
+        </p>
+        <Button asChild>
+          <Link href="/blog/new">Create Your First Blog</Link>
+        </Button>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+          <p className="text-muted-foreground">View insights about your blog performance</p>
+        </div>
         <div className="flex gap-2">
           <Button variant={timeframe === 7 ? "default" : "outline"} onClick={() => handleTimeframeChange(7)}>
             7 Days
@@ -98,32 +97,37 @@ export default function BlogAnalytics({ slug }: BlogAnalyticsProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle>Total Views</CardTitle>
-            <CardDescription>All-time page views</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{analytics.views.total}</p>
+            <div className="text-3xl font-bold">{analytics.total_posts}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle>Total Likes</CardTitle>
-            <CardDescription>All-time likes received</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{analytics.likes.total}</p>
+            <div className="text-3xl font-bold">{analytics.total_views}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle>Total Comments</CardTitle>
-            <CardDescription>All-time comments</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{analytics.comments.total}</p>
+            <div className="text-3xl font-bold">{analytics.total_likes}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Comments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{analytics.total_comments}</div>
           </CardContent>
         </Card>
       </div>
@@ -143,34 +147,34 @@ export default function BlogAnalytics({ slug }: BlogAnalyticsProps) {
             <div className="h-[400px] mt-4">
               <TabsContent value="views">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analytics.views.timeline}>
+                  <LineChart data={analytics.views_timeline}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Line type="monotone" dataKey="views" stroke="#3b82f6" />
+                    <Line type="monotone" dataKey="count" stroke="#3b82f6" />
                   </LineChart>
                 </ResponsiveContainer>
               </TabsContent>
               <TabsContent value="likes">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analytics.likes.timeline}>
+                  <LineChart data={analytics.likes_timeline}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Line type="monotone" dataKey="likes" stroke="#3b82f6" />
+                    <Line type="monotone" dataKey="count" stroke="#3b82f6" />
                   </LineChart>
                 </ResponsiveContainer>
               </TabsContent>
               <TabsContent value="comments">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={analytics.comments.timeline}>
+                  <LineChart data={analytics.comments_timeline}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
                     <Tooltip />
-                    <Line type="monotone" dataKey="comments" stroke="#3b82f6" />
+                    <Line type="monotone" dataKey="count" stroke="#3b82f6" />
                   </LineChart>
                 </ResponsiveContainer>
               </TabsContent>
@@ -182,60 +186,46 @@ export default function BlogAnalytics({ slug }: BlogAnalyticsProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Traffic Sources</CardTitle>
-            <CardDescription>Where your readers come from</CardDescription>
+            <CardTitle>Top Performing Posts</CardTitle>
+            <CardDescription>Your most viewed blog posts</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={analytics.sources}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="count"
-                    nameKey="source"
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {analytics.sources.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name, props) => [`${value} visits`, props.payload.source]} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="space-y-4">
+              {analytics.top_posts.map((post: any) => (
+                <div key={post.id} className="border-b pb-4 last:border-0 last:pb-0">
+                  <Link href={`/blog/${post.slug}`} className="font-medium hover:text-primary transition-colors">
+                    {post.title}
+                  </Link>
+                  <div className="flex justify-between text-sm text-muted-foreground mt-1">
+                    <span>{formatDate(post.published_at)}</span>
+                    <span>{post.views} views</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Reading Stats</CardTitle>
-            <CardDescription>How readers engage with your content</CardDescription>
+            <CardTitle>Posts by Engagement</CardTitle>
+            <CardDescription>Likes and comments per post</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium">Average Read Percentage</p>
-              <p className="text-2xl font-bold">{analytics.read_time.average_percentage.toFixed(0)}%</p>
-              <div className="w-full bg-secondary h-2 mt-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-primary h-full rounded-full"
-                  style={{ width: `${analytics.read_time.average_percentage}%` }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium">Completion Rate</p>
-              <p className="text-2xl font-bold">{analytics.read_time.completion_rate.toFixed(0)}%</p>
-              <div className="w-full bg-secondary h-2 mt-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-primary h-full rounded-full"
-                  style={{ width: `${analytics.read_time.completion_rate}%` }}
-                ></div>
-              </div>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={analytics.top_posts} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="title" tick={false} />
+                  <YAxis />
+                  <Tooltip
+                    labelFormatter={(index) => analytics.top_posts[index]?.title || ""}
+                    formatter={(value, name) => [value, name === "likes" ? "Likes" : "Comments"]}
+                  />
+                  <Bar dataKey="likes" fill="#3b82f6" name="Likes" />
+                  <Bar dataKey="comments" fill="#10b981" name="Comments" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>

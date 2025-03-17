@@ -3,66 +3,38 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import apiClient from "@/lib/api-client"
+import { blogApi } from "@/lib/api-client"
 import { formatDate } from "@/lib/utils"
 
 interface Post {
   id: string
   slug: string
   title: string
+  excerpt: string
   cover_image?: string
   published_at: string
-  read_time: number
+  author: {
+    name: string
+  }
 }
 
 export default function RecommendedPosts() {
-  const [recommendedPosts, setRecommendedPosts] = useState<Post[]>([])
+  const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchRecommendedPosts = async () => {
       try {
-        const response = await apiClient.get("/blogs/recommended")
-        setRecommendedPosts(response.data)
+        setLoading(true)
+        // In a real app, this would use a recommendation algorithm
+        // For now, just get some random posts
+        const data = await blogApi.getBlogs({ limit: 4 })
+        setPosts(data)
       } catch (error) {
         console.error("Failed to fetch recommended posts:", error)
-        // Fallback to mock data if API fails
-        setRecommendedPosts([
-          {
-            id: "4",
-            slug: "machine-learning-basics",
-            title: "Machine Learning: The Basics",
-            cover_image: "/placeholder.svg?height=200&width=200",
-            published_at: new Date().toISOString(),
-            read_time: 8,
-          },
-          {
-            id: "5",
-            slug: "python-for-beginners",
-            title: "Python Programming for Beginners",
-            cover_image: "/placeholder.svg?height=200&width=200",
-            published_at: new Date().toISOString(),
-            read_time: 6,
-          },
-          {
-            id: "6",
-            slug: "data-science-career",
-            title: "Starting a Career in Data Science",
-            cover_image: "/placeholder.svg?height=200&width=200",
-            published_at: new Date().toISOString(),
-            read_time: 7,
-          },
-          {
-            id: "7",
-            slug: "cloud-computing-intro",
-            title: "Introduction to Cloud Computing",
-            cover_image: "/placeholder.svg?height=200&width=200",
-            published_at: new Date().toISOString(),
-            read_time: 5,
-          },
-        ])
+        setPosts([])
       } finally {
         setLoading(false)
       }
@@ -73,53 +45,53 @@ export default function RecommendedPosts() {
 
   if (loading) {
     return (
-      <div className="bg-secondary/50 rounded-lg p-6">
-        <h2 className="text-xl font-bold mb-4">Recommended For You</h2>
-        <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Recommended For You</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="overflow-hidden">
-              <div className="flex gap-3">
-                <Skeleton className="w-20 h-20 rounded-md flex-shrink-0" />
-                <div className="py-1 flex-1">
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-2/3" />
-                </div>
+            <div key={i} className="flex gap-3">
+              <Skeleton className="h-16 w-16 rounded-md flex-shrink-0" />
+              <div className="flex-1">
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-3 w-2/3" />
               </div>
-            </Card>
+            </div>
           ))}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     )
   }
 
+  if (posts.length === 0) {
+    return null
+  }
+
   return (
-    <div className="bg-secondary/50 rounded-lg p-6">
-      <h2 className="text-xl font-bold mb-4">Recommended For You</h2>
-      <div className="space-y-4">
-        {recommendedPosts.map((post) => (
-          <Card key={post.id} className="overflow-hidden">
-            <div className="flex gap-3">
-              <div className="relative w-20 h-20 flex-shrink-0">
-                <Image
-                  src={post.cover_image || "/placeholder.svg?height=200&width=200"}
-                  alt={post.title}
-                  fill
-                  className="object-cover rounded-md"
-                />
-              </div>
-              <CardContent className="p-0 py-1 flex-1">
-                <Link href={`/blog/${post.slug}`}>
-                  <h3 className="font-medium line-clamp-2 hover:text-primary transition-colors">{post.title}</h3>
-                </Link>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {formatDate(post.published_at)} • {post.read_time} min read
-                </p>
-              </CardContent>
+    <Card>
+      <CardHeader>
+        <CardTitle>Recommended For You</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {posts.map((post) => (
+          <Link key={post.id} href={`/blog/${post.slug}`} className="flex gap-3 group">
+            <div className="relative h-16 w-16 rounded-md overflow-hidden flex-shrink-0">
+              <Image
+                src={post.cover_image || "/placeholder.svg?height=100&width=100"}
+                alt={post.title}
+                fill
+                className="object-cover"
+              />
             </div>
-          </Card>
+            <div className="flex-1">
+              <h4 className="font-medium line-clamp-2 group-hover:text-primary transition-colors">{post.title}</h4>
+              <p className="text-xs text-muted-foreground">{formatDate(post.published_at)}</p>
+            </div>
+          </Link>
         ))}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }
 

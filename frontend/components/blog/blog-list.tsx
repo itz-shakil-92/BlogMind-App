@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { api } from "@/lib/api-client"
+import { blogApi } from "@/lib/api-client"
 import { formatDate } from "@/lib/utils"
 
 interface Author {
@@ -19,6 +19,7 @@ interface Author {
 interface Category {
   id: string
   name: string
+  slug: string
 }
 
 interface Post {
@@ -42,9 +43,7 @@ interface BlogListProps {
 
 export default function BlogList({ initialPosts, category, tag, searchQuery }: BlogListProps) {
   const [posts, setPosts] = useState<Post[]>(initialPosts || [])
-  const [visiblePosts, setVisiblePosts] = useState(6)
   const [loading, setLoading] = useState(!initialPosts)
-  const [totalPosts, setTotalPosts] = useState(0)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
 
@@ -62,18 +61,9 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
           if (tag) params.tag = tag
           if (searchQuery) params.search = searchQuery
 
-          const data = await api.getBlogs(params)
-
-          // Handle both pagination and non-pagination responses
-          if (data.items && typeof data.total === "number") {
-            setPosts(data.items)
-            setTotalPosts(data.total)
-            setHasMore(data.items.length < data.total)
-          } else {
-            setPosts(Array.isArray(data) ? data : [])
-            setTotalPosts(Array.isArray(data) ? data.length : 0)
-            setHasMore(false)
-          }
+          const data = await blogApi.getBlogs(params)
+          setPosts(Array.isArray(data) ? data : [])
+          setHasMore(data.length >= 10)
         } catch (error) {
           console.error("Failed to fetch posts:", error)
           // Fallback to mock data if API fails
@@ -86,7 +76,7 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
               cover_image: "/placeholder.svg?height=600&width=800",
               published_at: new Date().toISOString(),
               read_time: 5,
-              category: { id: "1", name: "Technology" },
+              category: { id: "1", name: "Technology", slug: "technology" },
               author: { id: "1", name: "John Doe", avatar: "/placeholder.svg" },
             },
             {
@@ -97,7 +87,7 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
               cover_image: "/placeholder.svg?height=600&width=800",
               published_at: new Date().toISOString(),
               read_time: 7,
-              category: { id: "2", name: "Technology" },
+              category: { id: "2", name: "Technology", slug: "technology" },
               author: { id: "2", name: "Jane Smith", avatar: "/placeholder.svg" },
             },
             {
@@ -108,12 +98,11 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
               cover_image: "/placeholder.svg?height=600&width=800",
               published_at: new Date().toISOString(),
               read_time: 6,
-              category: { id: "3", name: "Business" },
+              category: { id: "3", name: "Business", slug: "business" },
               author: { id: "3", name: "Mike Johnson", avatar: "/placeholder.svg" },
             },
           ]
           setPosts(mockPosts)
-          setTotalPosts(mockPosts.length)
           setHasMore(false)
         } finally {
           setLoading(false)
@@ -123,7 +112,6 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
       fetchPosts()
     } else {
       setPosts(initialPosts)
-      setTotalPosts(initialPosts.length)
       setHasMore(false)
     }
   }, [initialPosts, category, tag, searchQuery])
@@ -142,15 +130,18 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
       if (tag) params.tag = tag
       if (searchQuery) params.search = searchQuery
 
-      const data = await api.getBlogs(params)
+      const data = await blogApi.getBlogs(params)
 
-      if (data.items && Array.isArray(data.items)) {
-        setPosts((prev) => [...prev, ...data.items])
+      if (Array.isArray(data) && data.length > 0) {
+        setPosts((prev) => [...prev, ...data])
         setPage(nextPage)
-        setHasMore(data.items.length > 0 && posts.length + data.items.length < data.total)
+        setHasMore(data.length >= 10)
+      } else {
+        setHasMore(false)
       }
     } catch (error) {
       console.error("Failed to load more posts:", error)
+      setHasMore(false)
     }
   }
 

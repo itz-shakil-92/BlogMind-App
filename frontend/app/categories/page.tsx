@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 async function getCategories() {
   try {
-    const response = await apiClient.get("/categories")
+    const response = await apiClient.get("/api/blogs/categories")
     return response.data
   } catch (error) {
     console.error("Failed to fetch categories:", error)
