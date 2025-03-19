@@ -5,8 +5,16 @@ export function middleware(request: NextRequest) {
   // Get the pathname
   const path = request.nextUrl.pathname
 
-  // Define protected routes
-  const protectedRoutes = ["/profile"]
+  // Define protected routes - now including all blog routes
+  const protectedRoutes = [
+    "/dashboard",
+    "/profile",
+    "/blog",
+    "/analytics",
+    "/categories",
+    "/search",
+    "/", // Protect the home page as well
+  ]
 
   // Check if the path starts with any protected route
   const isProtectedRoute = protectedRoutes.some((route) => path === route || path.startsWith(`${route}/`))
@@ -21,9 +29,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // If it's a login/signup page and user is already logged in, redirect to profile
+  // If it's a login/signup page and user is already logged in, redirect to dashboard
   if ((path === "/login" || path === "/signup") && token) {
-    return NextResponse.redirect(new URL("/profile", request.url))
+    return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
   return NextResponse.next()
@@ -31,6 +39,6 @@ export function middleware(request: NextRequest) {
 
 // See "Matching Paths" below to learn more
 export const config = {
-  matcher: ["/profile/:path*", "/login", "/signup"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 }
 

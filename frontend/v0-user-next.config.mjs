@@ -1,6 +1,6 @@
 let userConfig = undefined
 try {
-  userConfig = await import('./v0-user-next.config')
+  userConfig = await import('BlogMind App')
 } catch (e) {
   // ignore error
 }
@@ -14,7 +14,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    domains: ['blogmind-app-1.onrender.com', 'placeholder.svg'],
+    domains: [process.env.NEXT_PUBLIC_API_URL, 'placeholder.svg'],
     remotePatterns: [
       {
         protocol: 'https',

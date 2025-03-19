@@ -1,41 +1,66 @@
-import type { Metadata } from "next"
-import { redirect, notFound } from "next/navigation"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams, notFound, useRouter } from "next/navigation"
+import { Skeleton } from "@/components/ui/skeleton"
 import BlogForm from "@/components/blog/blog-form"
-import { getServerSession } from "next-auth"
-import apiClient from "@/lib/api-client"
+import { blogApi } from "@/lib/api-client"
+import { useAuth } from "@/contexts/auth-context"
 
-export const metadata: Metadata = {
-  title: "Edit Blog Post | BlogMind",
-  description: "Edit your blog post",
-}
+export default function EditBlogPage() {
+  const params = useParams()
+  const router = useRouter()
+  const { user, isAuthenticated, loading } = useAuth()
+  const [blog, setBlog] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-async function getBlogPost(slug: string) {
-  try {
-    const response = await apiClient.get(`/blogs/${slug}`)
-    return response.data
-  } catch (error) {
-    console.error("Failed to fetch blog post:", error)
-    return null
+  const slug = params.slug as string
+
+  useEffect(() => {
+    const fetchBlog = async () => {
+      try {
+        setIsLoading(true)
+        const data = await blogApi.getBlogBySlug(slug)
+        setBlog(data)
+
+        // Check if user is the author
+        if (user && data.author.id !== user.id) {
+          router.push(`/blog/${slug}`)
+        }
+      } catch (error) {
+        console.error("Failed to fetch blog:", error)
+        notFound()
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    // Only fetch if user is authenticated
+    if (!loading) {
+      if (!isAuthenticated) {
+        router.push(`/login?redirect=/blog/${slug}/edit`)
+      } else {
+        fetchBlog()
+      }
+    }
+  }, [slug, user, isAuthenticated, loading, router])
+
+  if (loading || isLoading) {
+    return (
+      <div className="container max-w-screen-lg py-12">
+        <Skeleton className="h-12 w-48 mb-6" />
+        <Skeleton className="h-[600px] w-full rounded-md" />
+      </div>
+    )
   }
-}
 
-export default async function EditBlogPage({ params }: { params: { slug: string } }) {
-  // Check if user is authenticated on the server
-  const session = await getServerSession()
-
-  if (!session) {
-    redirect(`/login?redirect=/blog/${params.slug}/edit`)
-  }
-
-  const post = await getBlogPost(params.slug)
-
-  if (!post) {
-    notFound()
+  if (!blog) {
+    return notFound()
   }
 
   return (
     <div className="container max-w-screen-lg py-12">
-      <BlogForm blog={post} />
+      <BlogForm blog={blog} />
     </div>
   )
 }

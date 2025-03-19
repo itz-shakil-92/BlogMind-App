@@ -24,15 +24,15 @@ export default function ContactPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-primary" />
-                <span>contact@blogmind.com</span>
+                <span>shakil_2021bite055@nitsri.ac.in</span>
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-primary" />
-                <span>+1 (555) 123-4567</span>
+                <span>+91-635015XXXX</span>
               </div>
               <div className="flex items-center gap-3">
                 <MapPin className="h-5 w-5 text-primary" />
-                <span>123 Blog Street, Content City, ST 12345</span>
+                <span>NIT Srinagar, Jammu and Kashmir, India<br/>Pin Code- 190006</span>
               </div>
             </div>
           </div>

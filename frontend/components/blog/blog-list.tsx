@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { api } from "@/lib/api-client"
+import { blogApi } from "@/lib/api-client"
 import { formatDate } from "@/lib/utils"
 
 interface Author {
@@ -19,6 +20,7 @@ interface Author {
 interface Category {
   id: string
   name: string
+  slug: string
 }
 
 interface Post {
@@ -41,10 +43,11 @@ interface BlogListProps {
 }
 
 export default function BlogList({ initialPosts, category, tag, searchQuery }: BlogListProps) {
+  const searchParams = useSearchParams()
+  const categoryParam = category || searchParams?.get("category") || undefined
+
   const [posts, setPosts] = useState<Post[]>(initialPosts || [])
-  const [visiblePosts, setVisiblePosts] = useState(6)
   const [loading, setLoading] = useState(!initialPosts)
-  const [totalPosts, setTotalPosts] = useState(0)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
 
@@ -58,22 +61,14 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
             limit: 10,
           }
 
-          if (category) params.category = category
+          if (categoryParam) params.category = categoryParam
           if (tag) params.tag = tag
           if (searchQuery) params.search = searchQuery
 
-          const data = await api.getBlogs(params)
-
-          // Handle both pagination and non-pagination responses
-          if (data.items && typeof data.total === "number") {
-            setPosts(data.items)
-            setTotalPosts(data.total)
-            setHasMore(data.items.length < data.total)
-          } else {
-            setPosts(Array.isArray(data) ? data : [])
-            setTotalPosts(Array.isArray(data) ? data.length : 0)
-            setHasMore(false)
-          }
+          console.log("Fetching blog list with params:", params)
+          const data = await blogApi.getBlogs(params)
+          setPosts(Array.isArray(data) ? data : [])
+          setHasMore(data.length >= 10)
         } catch (error) {
           console.error("Failed to fetch posts:", error)
           // Fallback to mock data if API fails
@@ -86,7 +81,7 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
               cover_image: "/placeholder.svg?height=600&width=800",
               published_at: new Date().toISOString(),
               read_time: 5,
-              category: { id: "1", name: "Technology" },
+              category: { id: "1", name: "Technology", slug: "technology" },
               author: { id: "1", name: "John Doe", avatar: "/placeholder.svg" },
             },
             {
@@ -97,7 +92,7 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
               cover_image: "/placeholder.svg?height=600&width=800",
               published_at: new Date().toISOString(),
               read_time: 7,
-              category: { id: "2", name: "Technology" },
+              category: { id: "2", name: "Technology", slug: "technology" },
               author: { id: "2", name: "Jane Smith", avatar: "/placeholder.svg" },
             },
             {
@@ -108,12 +103,11 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
               cover_image: "/placeholder.svg?height=600&width=800",
               published_at: new Date().toISOString(),
               read_time: 6,
-              category: { id: "3", name: "Business" },
+              category: { id: "3", name: "Business", slug: "business" },
               author: { id: "3", name: "Mike Johnson", avatar: "/placeholder.svg" },
             },
           ]
           setPosts(mockPosts)
-          setTotalPosts(mockPosts.length)
           setHasMore(false)
         } finally {
           setLoading(false)
@@ -123,10 +117,9 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
       fetchPosts()
     } else {
       setPosts(initialPosts)
-      setTotalPosts(initialPosts.length)
       setHasMore(false)
     }
-  }, [initialPosts, category, tag, searchQuery])
+  }, [initialPosts, categoryParam, tag, searchQuery])
 
   const loadMore = async () => {
     if (!hasMore || initialPosts) return
@@ -138,19 +131,22 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
         limit: 10,
       }
 
-      if (category) params.category = category
+      if (categoryParam) params.category = categoryParam
       if (tag) params.tag = tag
       if (searchQuery) params.search = searchQuery
 
-      const data = await api.getBlogs(params)
+      const data = await blogApi.getBlogs(params)
 
-      if (data.items && Array.isArray(data.items)) {
-        setPosts((prev) => [...prev, ...data.items])
+      if (Array.isArray(data) && data.length > 0) {
+        setPosts((prev) => [...prev, ...data])
         setPage(nextPage)
-        setHasMore(data.items.length > 0 && posts.length + data.items.length < data.total)
+        setHasMore(data.length >= 10)
+      } else {
+        setHasMore(false)
       }
     } catch (error) {
       console.error("Failed to load more posts:", error)
+      setHasMore(false)
     }
   }
 
@@ -191,7 +187,7 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
         <p className="text-muted-foreground mb-6">
           {searchQuery
             ? `No results found for "${searchQuery}"`
-            : category
+            : categoryParam
               ? `No posts found in this category`
               : tag
                 ? `No posts found with this tag`
@@ -206,7 +202,10 @@ export default function BlogList({ initialPosts, category, tag, searchQuery }: B
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Latest Articles</h2>
+      <h2 className="text-2xl font-bold mb-6">
+        Latest Articles
+        {categoryParam && ` in ${categoryParam.charAt(0).toUpperCase() + categoryParam.slice(1)}`}
+      </h2>
       <div className="space-y-6">
         {posts.map((post) => (
           <Card key={post.id} className="overflow-hidden">

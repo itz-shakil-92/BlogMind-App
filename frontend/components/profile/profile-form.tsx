@@ -6,12 +6,15 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { getInitials } from "@/lib/utils"
+import { uploadApi } from "@/lib/api-client"
+import { Upload } from "lucide-react"
 
 export default function ProfileForm() {
   const { toast } = useToast()
@@ -50,17 +53,18 @@ export default function ProfileForm() {
 
     try {
       setIsUploading(true)
-      // For development, just set the file as a data URL
-      const reader = new FileReader()
-      reader.onload = () => {
-        setFormData((prev) => ({ ...prev, avatar: reader.result as string }))
-        setIsUploading(false)
-        toast({
-          title: "Avatar uploaded",
-          description: "Your avatar has been uploaded successfully.",
-        })
-      }
-      reader.readAsDataURL(file)
+
+      // Upload the avatar
+      const result = await uploadApi.uploadAvatar(file)
+      console.log("Avatar upload result:", result)
+
+      // Update the form data with the new avatar URL
+      setFormData((prev) => ({ ...prev, avatar: result.avatar_url }))
+
+      toast({
+        title: "Avatar uploaded",
+        description: "Your avatar has been uploaded successfully.",
+      })
     } catch (error) {
       console.error("Failed to upload avatar:", error)
       toast({
@@ -68,7 +72,19 @@ export default function ProfileForm() {
         description: "Failed to upload avatar. Please try again.",
         variant: "destructive",
       })
+    } finally {
       setIsUploading(false)
+    }
+  }
+
+  const validateImageUrl = (url: string) => {
+    if (!url) return true // Empty URL is valid (no image)
+
+    try {
+      new URL(url)
+      return true
+    } catch (e) {
+      return false
     }
   }
 
@@ -77,6 +93,13 @@ export default function ProfileForm() {
     setIsLoading(true)
     setError("")
     setSuccess("")
+
+    // Validate image URL if provided
+    if (formData.avatar && !validateImageUrl(formData.avatar)) {
+      setError("Please enter a valid avatar URL")
+      setIsLoading(false)
+      return
+    }
 
     try {
       console.log("Updating profile with:", formData)
@@ -129,7 +152,13 @@ export default function ProfileForm() {
           )}
           <div className="flex items-center gap-4">
             <Avatar className="w-20 h-20">
-              <AvatarImage src={formData.avatar || ""} alt={formData.name || "User"} />
+              <AvatarImage
+                src={formData.avatar}
+                alt={formData.name || "User"}
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.svg?height=200&width=200"
+                }}
+              />
               <AvatarFallback>{getInitials(formData.name || "User")}</AvatarFallback>
             </Avatar>
             <div className="space-y-2">
@@ -139,6 +168,7 @@ export default function ProfileForm() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
               >
+                <Upload className="h-4 w-4 mr-2" />
                 {isUploading ? "Uploading..." : "Upload Avatar"}
               </Button>
               <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
@@ -165,7 +195,7 @@ export default function ProfileForm() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>
-            <Input id="bio" name="bio" value={formData.bio} onChange={handleChange} />
+            <Textarea id="bio" name="bio" value={formData.bio} onChange={handleChange} rows={4} />
           </div>
         </CardContent>
         <CardFooter>

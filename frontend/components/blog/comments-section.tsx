@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import { formatDate, getInitials } from "@/lib/utils"
 import { useAuth } from "@/contexts/auth-context"
-import { api } from "@/lib/api-client"
+import { commentApi } from "@/lib/api-client"
 
 interface User {
   id: string
@@ -46,7 +46,7 @@ export default function CommentsSection({ blogId, blogSlug }: CommentsProps) {
     const fetchComments = async () => {
       try {
         setLoadingComments(true)
-        const commentsData = await api.getComments(blogSlug)
+        const commentsData = await commentApi.getComments(blogId)
         setComments(commentsData)
       } catch (error) {
         console.error("Failed to fetch comments:", error)
@@ -58,7 +58,7 @@ export default function CommentsSection({ blogId, blogSlug }: CommentsProps) {
     }
 
     fetchComments()
-  }, [blogSlug])
+  }, [blogId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -71,7 +71,7 @@ export default function CommentsSection({ blogId, blogSlug }: CommentsProps) {
     setError("")
 
     try {
-      const newComment = await api.addComment(blogId, commentText)
+      const newComment = await commentApi.addComment(blogId, commentText)
 
       // Add the new comment to the list
       setComments([
@@ -108,7 +108,7 @@ export default function CommentsSection({ blogId, blogSlug }: CommentsProps) {
     if (!confirm("Are you sure you want to delete this comment?")) return
 
     try {
-      await api.deleteComment(commentId)
+      await commentApi.deleteComment(commentId)
       setComments(comments.filter((comment) => comment.id !== commentId))
       toast({
         title: "Comment deleted",

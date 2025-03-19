@@ -1,4 +1,6 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import apiClient from "@/lib/api-client"
@@ -10,7 +12,7 @@ export const metadata: Metadata = {
 
 async function getCategories() {
   try {
-    const response = await apiClient.get("/categories")
+    const response = await apiClient.get("/api/blogs/categories")
     return response.data
   } catch (error) {
     console.error("Failed to fetch categories:", error)
@@ -26,6 +28,14 @@ async function getCategories() {
 }
 
 export default async function CategoriesPage() {
+  // Check if user is authenticated on the server
+  const cookieStore = await cookies()
+  const token = await cookieStore.get("token")
+
+  if (!token) {
+    redirect("/login?redirect=/categories")
+  }
+
   const categories = await getCategories()
 
   return (

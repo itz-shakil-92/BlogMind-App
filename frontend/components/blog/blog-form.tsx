@@ -13,12 +13,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { api } from "@/lib/api-client"
+import { blogApi, uploadApi } from "@/lib/api-client"
 import { ArrowLeft, Upload } from "lucide-react"
 
 interface Category {
   id: string
   name: string
+  slug: string
 }
 
 interface Tag {
@@ -49,6 +50,7 @@ export default function BlogForm({ blog }: BlogFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [formData, setFormData] = useState({
     title: blog?.title || "",
@@ -59,39 +61,41 @@ export default function BlogForm({ blog }: BlogFormProps) {
     cover_image: blog?.cover_image || "",
   })
 
+  // Fetch categories only once when component mounts
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        // Use the correct endpoint for categories
-        const categoriesData = await api.getCategories()
-        console.log("Categories fetched:", categoriesData)
+        setCategoriesLoading(true)
+        const categoriesData = await blogApi.getCategories()
+        console.log("Fetched categories:", categoriesData)
         setCategories(categoriesData)
 
-        // Set default category if none is selected
+        // Set default category if none is selected and categories are available
         if (!formData.category_id && categoriesData.length > 0) {
           setFormData((prev) => ({ ...prev, category_id: categoriesData[0].id }))
         }
       } catch (error) {
         console.error("Failed to fetch categories:", error)
-        setError("Failed to load categories. Please try again.")
-
         // Fallback categories for development
         const fallbackCategories = [
-          { id: "1", name: "Technology" },
-          { id: "2", name: "Lifestyle" },
-          { id: "3", name: "Health" },
-          { id: "4", name: "Business" },
-          { id: "5", name: "Travel" },
+          { id: "1", name: "Technology", slug: "technology" },
+          { id: "2", name: "Lifestyle", slug: "lifestyle" },
+          { id: "3", name: "Health", slug: "health" },
+          { id: "4", name: "Business", slug: "business" },
+          { id: "5", name: "Travel", slug: "travel" },
         ]
         setCategories(fallbackCategories)
 
         if (!formData.category_id) {
           setFormData((prev) => ({ ...prev, category_id: fallbackCategories[0].id }))
         }
+      } finally {
+        setCategoriesLoading(false)
       }
     }
 
     fetchCategories()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -100,6 +104,7 @@ export default function BlogForm({ blog }: BlogFormProps) {
   }
 
   const handleSelectChange = (value: string) => {
+    console.log("Selected category:", value)
     setFormData((prev) => ({ ...prev, category_id: value }))
   }
 
@@ -110,28 +115,16 @@ export default function BlogForm({ blog }: BlogFormProps) {
     try {
       setIsUploading(true)
 
-      // For development, just set the file as a data URL
-      // In production, use the actual API
-      const reader = new FileReader()
-      reader.onload = () => {
-        setFormData((prev) => ({ ...prev, cover_image: reader.result as string }))
-        setIsUploading(false)
-        toast({
-          title: "Image uploaded",
-          description: "Your cover image has been uploaded successfully.",
-        })
-      }
-      reader.readAsDataURL(file)
+      // Upload the blog image
+      const result = await uploadApi.uploadBlogImage(file)
 
-      // Uncomment this for actual API usage
-      /*
-      const result = await api.uploadBlogImage(file)
-      setFormData((prev) => ({ ...prev, cover_image: result.url }))
+      // Update the form data with the new image URL
+      setFormData((prev) => ({ ...prev, cover_image: result.image_url }))
+
       toast({
         title: "Image uploaded",
         description: "Your cover image has been uploaded successfully.",
       })
-      */
     } catch (error) {
       console.error("Failed to upload image:", error)
       toast({
@@ -139,7 +132,19 @@ export default function BlogForm({ blog }: BlogFormProps) {
         description: "Failed to upload image. Please try again.",
         variant: "destructive",
       })
+    } finally {
       setIsUploading(false)
+    }
+  }
+
+  const validateImageUrl = (url: string) => {
+    if (!url) return true // Empty URL is valid (no image)
+
+    try {
+      new URL(url)
+      return true
+    } catch (e) {
+      return false
     }
   }
 
@@ -148,7 +153,23 @@ export default function BlogForm({ blog }: BlogFormProps) {
     setIsLoading(true)
     setError("")
 
+    // Validate required fields
+    if (!formData.title || !formData.excerpt || !formData.content || !formData.category_id) {
+      setError("Title, excerpt, content, and category are required")
+      setIsLoading(false)
+      return
+    }
+
+    // Validate image URL if provided
+    if (formData.cover_image && !validateImageUrl(formData.cover_image)) {
+      setError("Please enter a valid image URL")
+      setIsLoading(false)
+      return
+    }
+
     try {
+      console.log("Submitting form data:", formData)
+
       const tagArray = formData.tags
         .split(",")
         .map((tag) => tag.trim())
@@ -164,17 +185,17 @@ export default function BlogForm({ blog }: BlogFormProps) {
         cover_image: formData.cover_image || undefined,
       }
 
-      console.log("Submitting blog with payload:", payload)
+      console.log("Submitting payload:", payload)
 
       let response
       if (blog) {
-        response = await api.updateBlog(blog.id, payload)
+        response = await blogApi.updateBlog(blog.id, payload)
         toast({
           title: "Blog post updated",
           description: "Your blog post has been updated successfully.",
         })
       } else {
-        response = await api.createBlog(payload)
+        response = await blogApi.createBlog(payload)
         toast({
           title: "Blog post created",
           description: "Your blog post has been created successfully.",
@@ -257,6 +278,9 @@ export default function BlogForm({ blog }: BlogFormProps) {
                     src={formData.cover_image || "/placeholder.svg"}
                     alt="Cover preview"
                     className="h-40 object-cover rounded-md"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg?height=400&width=600"
+                    }}
                   />
                 </div>
               )}
@@ -274,18 +298,26 @@ export default function BlogForm({ blog }: BlogFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category_id">Category</Label>
-                <Select value={formData.category_id} onValueChange={handleSelectChange}>
-                  <SelectTrigger id="category_id">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {categoriesLoading ? (
+                  <div className="h-10 w-full bg-muted animate-pulse rounded-md"></div>
+                ) : (
+                  <Select
+                    value={formData.category_id}
+                    onValueChange={handleSelectChange}
+                    defaultValue={categories.length > 0 ? categories[0].id : undefined}
+                  >
+                    <SelectTrigger id="category_id">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tags">Tags (comma-separated)</Label>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
-import DashboardContent from "@/components/dashboard/dashboard-content"
 import { cookies } from "next/headers"
+import DashboardContent from "@/components/dashboard/dashboard-content"
 
 export const metadata: Metadata = {
   title: "Dashboard | BlogMind",
@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
   // Check if user is authenticated on the server
-  const cookieStore = cookies()
-  const token = cookieStore.get("token")
+  const cookieStore = await cookies()
+  const token = await cookieStore.get("token")
 
   if (!token) {
     redirect("/login?redirect=/dashboard")

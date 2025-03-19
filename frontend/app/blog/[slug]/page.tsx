@@ -1,52 +1,66 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import Image from "next/image"
 import Link from "next/link"
-import { useParams, notFound } from "next/navigation"
+import { useParams, notFound, useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 import RecommendedPosts from "@/components/home/recommended-posts"
 import CommentsSection from "@/components/blog/comments-section"
-import PostActions from "@/components/blog/post-actions"
-import { Calendar, Clock, ArrowLeft } from "lucide-react"
+import { Calendar, Clock, ArrowLeft, Heart, Share2, Edit, BarChart2 } from "lucide-react"
 import { formatDate, getInitials } from "@/lib/utils"
-import { api } from "@/lib/api-client"
+import { blogApi, analyticsApi } from "@/lib/api-client"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function BlogPost() {
   const params = useParams()
+  const router = useRouter()
+  const { user, isAuthenticated, loading } = useAuth()
   const slug = params.slug as string
   const [post, setPost] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [liked, setLiked] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const [readProgress, setReadProgress] = useState(0)
   const progressRecorded = useRef<Set<number>>(new Set())
 
+  // Check authentication and redirect if not authenticated
   useEffect(() => {
-    const fetchBlogPost = async () => {
-      try {
-        setLoading(true)
-        const data = await api.getBlogBySlug(slug)
-        setPost(data)
-
-        // Record view
-        try {
-          await api.recordBlogView(data.id)
-        } catch (viewError) {
-          console.error("Failed to record view:", viewError)
-        }
-      } catch (error) {
-        console.error("Failed to fetch blog post:", error)
-        setError("Failed to load blog post")
-      } finally {
-        setLoading(false)
-      }
+    if (!loading && !isAuthenticated) {
+      router.push(`/login?redirect=/blog/${slug}`)
     }
+  }, [loading, isAuthenticated, router, slug])
 
-    fetchBlogPost()
-  }, [slug])
+  useEffect(() => {
+    // Only fetch blog post if user is authenticated
+    if (isAuthenticated) {
+      const fetchBlogPost = async () => {
+        try {
+          setPageLoading(true)
+          const data = await blogApi.getBlogBySlug(slug)
+          setPost(data)
+          setLiked(data.is_liked || false)
+
+          // Record view
+          try {
+            await analyticsApi.recordBlogView(slug, document.referrer)
+          } catch (viewError) {
+            console.error("Failed to record view:", viewError)
+          }
+        } catch (error) {
+          console.error("Failed to fetch blog post:", error)
+          setError("Failed to load blog post")
+        } finally {
+          setPageLoading(false)
+        }
+      }
+
+      fetchBlogPost()
+    }
+  }, [slug, isAuthenticated])
 
   useEffect(() => {
     if (!post) return
@@ -78,7 +92,7 @@ export default function BlogPost() {
         if (progress >= point && !progressRecorded.current.has(point)) {
           progressRecorded.current.add(point)
           try {
-            api.recordReadProgress(post.id, point)
+            analyticsApi.recordReadProgress(slug, point)
           } catch (error) {
             console.error(`Failed to record ${point}% progress:`, error)
           }
@@ -88,9 +102,49 @@ export default function BlogPost() {
 
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
-  }, [post])
+  }, [post, slug])
 
-  if (loading) {
+  const handleLike = async () => {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=/blog/${slug}`)
+      return
+    }
+
+    try {
+      await blogApi.likeBlog(slug)
+      setLiked(!liked)
+
+      // Update the post's like count
+      setPost((prev: any) => ({
+        ...prev,
+        likes_count: liked ? prev.likes_count - 1 : prev.likes_count + 1,
+      }))
+    } catch (error) {
+      console.error("Failed to like/unlike post:", error)
+    }
+  }
+
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/blog/${slug}`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: post.title,
+          text: post.excerpt,
+          url: shareUrl,
+        })
+      } catch (error) {
+        console.error("Error sharing:", error)
+      }
+    } else {
+      // Fallback to copying to clipboard
+      navigator.clipboard.writeText(shareUrl)
+      alert("Link copied to clipboard!")
+    }
+  }
+
+  if (loading || pageLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -114,11 +168,15 @@ export default function BlogPost() {
     )
   }
 
+  if (!isAuthenticated) {
+    return null // Will redirect in the useEffect
+  }
+
   if (error || !post) {
     notFound()
   }
 
-  const shareUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "https://blogmind.com"}/blog/${post.slug}`
+  const isAuthor = user && post.author && post.author.id === user.id
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -132,37 +190,61 @@ export default function BlogPost() {
 
         <div className="flex items-center gap-4 mb-6">
           <Avatar>
-            <AvatarImage src={post.author.avatar || "/placeholder.svg"} alt={post.author.name} />
-            <AvatarFallback>{getInitials(post.author.name)}</AvatarFallback>
+            <AvatarImage
+              src={post.author?.avatar}
+              alt={post.author?.name || "Author"}
+              onError={(e) => {
+                e.currentTarget.src = "/placeholder.svg?height=100&width=100"
+              }}
+            />
+            <AvatarFallback>{getInitials(post.author?.name || "Author")}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{post.author.name}</p>
+            <p className="font-medium">{post.author?.name || "Anonymous"}</p>
             <div className="flex items-center text-sm text-muted-foreground">
               <Calendar className="mr-1 h-3 w-3" />
-              <span>{formatDate(post.published_at)}</span>
+              <span>{formatDate(post.published_at || post.created_at)}</span>
               <span className="mx-2">•</span>
               <Clock className="mr-1 h-3 w-3" />
-              <span>{post.read_time} min read</span>
+              <span>{post.read_time || 5} min read</span>
             </div>
           </div>
-          <div className="ml-auto">
-            <PostActions
-              postId={post.id}
-              slug={post.slug}
-              initialLikes={post.likes_count || 0}
-              initialIsLiked={post.is_liked || false}
-              shareUrl={shareUrl}
-            />
+          <div className="ml-auto flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleLike}>
+              <Heart className={`h-4 w-4 mr-2 ${liked ? "fill-primary text-primary" : ""}`} />
+              {post.likes_count || 0}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleShare}>
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+            {isAuthor && (
+              <>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/blog/${post.slug}/edit`}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/blog/${post.slug}/analytics`}>
+                    <BarChart2 className="h-4 w-4 mr-2" />
+                    Analytics
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         <div className="relative w-full h-[400px] mb-8 rounded-lg overflow-hidden">
-          <Image
+          <img
             src={post.cover_image || "/placeholder.svg?height=800&width=1200"}
             alt={post.title}
-            fill
-            className="object-cover"
-            priority
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = "/placeholder.svg?height=800&width=1200"
+            }}
           />
         </div>
 

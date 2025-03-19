@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import BlogForm from "@/components/blog/blog-form"
-import { getServerSession } from "next-auth"
+import { cookies } from "next/headers"
 
 export const metadata: Metadata = {
   title: "Create Blog Post | BlogMind",
@@ -10,9 +10,10 @@ export const metadata: Metadata = {
 
 export default async function NewBlogPage() {
   // Check if user is authenticated on the server
-  const session = await getServerSession()
+  const cookieStore = cookies()
+  const token = cookieStore.get("token")
 
-  if (!session) {
+  if (!token) {
     redirect("/login?redirect=/blog/new")
   }
 

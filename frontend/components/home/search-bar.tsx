@@ -15,6 +15,7 @@ export default function SearchBar() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
+      // Use the correct search URL format
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
     }
   }
