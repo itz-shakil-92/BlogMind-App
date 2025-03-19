@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
     # Application settings
-    BACKEND_CORS_ORIGINS: List[str] = ["https://blogmindappnitsrinagar.netlify.app","https://blog-mind-app.vercel.app/"]
+    BACKEND_CORS_ORIGINS: List[str] = ["https://blogmindappnitsrinagar.netlify.app","https://blog-mind-app.vercel.app"]
     API_URL: str = os.getenv("API_URL")
     FRONTEND_URL: str = os.getenv("FRONTEND_URL")
     UPLOAD_DIR: str = os.getenv("UPLOAD_DIR")
